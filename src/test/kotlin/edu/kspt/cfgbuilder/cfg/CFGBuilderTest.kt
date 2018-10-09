@@ -3,7 +3,9 @@ package edu.kspt.cfgbuilder.cfg
 import edu.kspt.cfgbuilder.ParserFacade
 import edu.kspt.cfgbuilder.ast.CFGVisitor
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.reflect.KMutableProperty
 
 class CFGBuilderTest {
     @Test
@@ -38,5 +40,43 @@ class CFGBuilderTest {
                 lastNode to emptySet()
         )
         return pythonCode to cfg
+    }
+
+    @Test
+    fun `builder can handle code with for-statements without else-blocks`() {
+        // given
+        val (pythonCode, expectedCfg) = getPythonCodeWithForStatements()
+        val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
+        // when
+        val cfg = CFGBuilder().makeCFG(stmts)
+        // then
+        assertThat(cfg).containsAllEntriesOf(expectedCfg)
+    }
+
+    private fun getPythonCodeWithForStatements(): Pair<String, ControlFlowGraph> {
+        val pythonCode = getPythonCodeExample("for_statement_example")
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 6)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 5)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 4)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 3)
+        val loopEndNode = Node(NodeType.LOOP_END, "", 2)
+        val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
+        val cfg: ControlFlowGraph = mutableMapOf(
+                firstNode to setOf(LinkTo(secondNode)),
+                secondNode to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(bodyNode1)),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(loopEndNode)),
+                loopEndNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+        return pythonCode to cfg
+    }
+
+    @BeforeEach
+    fun setUp() {
+        (Node.Companion::class.members.single { it.name == "CURRENT_MAX_ID" } as? KMutableProperty)
+                ?.setter?.call(Node.Companion, 0)
     }
 }

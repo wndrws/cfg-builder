@@ -44,10 +44,7 @@ class CFGBuilder {
             ifStatementCfg = Node(NodeType.CONDITION, test)
                     .join(CFGBuilder().makeCFG(trueBranch), ifStatementCfg, "yes", "no")
         }
-        if (previousNode != null) {
-            val t = ifStatementCfg.findAllEnds().map { it to setOf(LinkTo(previousNode!!)) }.toMap()
-            ifStatementCfg.plusAssign(t)
-        }
+        previousNode?.let { ifStatementCfg.appendNode(it) }
 //        compoundStatementsExits.pop()
         cfg.plusAssign(ifStatementCfg)
         return ifStatementCfg.findStart()
@@ -65,7 +62,20 @@ class CFGBuilder {
             Node(NodeType.FLOW, statement.text).also { it.connectTo(cfg) }
 
     private fun handleLoopStatement(statement: LoopStatement): Node {
-        TODO("not implemented")
+        if (statement.elseBranch.isEmpty()) {
+            val loopHead = Node(NodeType.LOOP_BEGIN, statement.condition)
+            val loopTail = Node(NodeType.LOOP_END, "")
+            val loopStatement = CFGBuilder().makeCFG(statement.body)
+            loopStatement.appendNode(loopTail)
+            loopHead.connectTo(loopStatement)
+            previousNode?.let {
+                loopStatement.appendNode(it)
+            }
+            cfg.plusAssign(loopStatement)
+            return loopStatement.findStart()
+        } else {
+            TODO("Not implemented")
+        }
     }
 
     private fun removeMainIf(statements: Statements): Statements {
