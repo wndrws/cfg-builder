@@ -61,15 +61,8 @@ class CFGBuilder {
         TODO("not implemented")
     }
 
-    private fun handleSimpleStatement(statement: SimpleStatement): Node {
-        val node = Node(NodeType.FLOW, statement.text)
-        if (cfg.isEmpty()) {
-            cfg[node] = emptySet()
-        } else {
-            node.connectTo(cfg)
-        }
-        return node
-    }
+    private fun handleSimpleStatement(statement: SimpleStatement) =
+            Node(NodeType.FLOW, statement.text).also { it.connectTo(cfg) }
 
     private fun handleLoopStatement(statement: LoopStatement): Node {
         TODO("not implemented")
