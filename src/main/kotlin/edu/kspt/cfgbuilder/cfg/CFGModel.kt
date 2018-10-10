@@ -48,6 +48,12 @@ fun ControlFlowGraph.appendNode(node: Node) {
     this.plusAssign(newEnd)
 }
 
+fun ControlFlowGraph.concat(other: ControlFlowGraph) {
+    val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(other.findStart())) }.toMap()
+    this.plusAssign(newGraphEntries)
+    this.plusAssign(other)
+}
+
 fun ControlFlowGraph.prettyPrint() {
     this.forEach { node, links -> println("$node: $links") }
 }
