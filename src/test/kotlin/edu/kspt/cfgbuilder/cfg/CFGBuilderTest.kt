@@ -54,20 +54,18 @@ class CFGBuilderTest {
 
     private fun getPythonCodeWithForStatement(): Pair<String, ControlFlowGraph> {
         val pythonCode = getPythonCodeExample("for_statement_example")
-        val firstNode = Node(NodeType.FLOW, "smth1=1", 6)
-        val secondNode = Node(NodeType.FLOW, "smth2=2", 5)
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 5)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 4)
         val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
-        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 4)
-        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 3)
-        val loopEndNode = Node(NodeType.LOOP_END, "else: ", 2)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 3)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 2)
         val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
-        val cfg: ControlFlowGraph = mutableMapOf(
+        val cfg: ControlFlowGraph = mapOf(
                 firstNode to setOf(LinkTo(secondNode)),
                 secondNode to setOf(LinkTo(forNode)),
-                forNode to setOf(LinkTo(bodyNode1)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(lastNode, "no")),
                 bodyNode1 to setOf(LinkTo(bodyNode2)),
-                bodyNode2 to setOf(LinkTo(loopEndNode)),
-                loopEndNode to setOf(LinkTo(lastNode)),
+                bodyNode2 to setOf(LinkTo(forNode, phantom = true)),
                 lastNode to emptySet()
         )
         return pythonCode to cfg
@@ -86,21 +84,19 @@ class CFGBuilderTest {
 
     private fun getPythonCodeWithForElseStatement(): Pair<String, ControlFlowGraph> {
         val pythonCode = getPythonCodeExample("for_else_statement_example")
-        val firstNode = Node(NodeType.FLOW, "smth1=1", 7)
-        val secondNode = Node(NodeType.FLOW, "smth2=2", 6)
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 6)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 5)
         val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
-        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 4)
-        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 3)
-        val loopEndNode = Node(NodeType.LOOP_END, "else: ", 2)
-        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 5)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 3)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 2)
+        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 4)
         val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
-        val cfg: ControlFlowGraph = mutableMapOf(
+        val cfg: ControlFlowGraph = mapOf(
                 firstNode to setOf(LinkTo(secondNode)),
                 secondNode to setOf(LinkTo(forNode)),
-                forNode to setOf(LinkTo(bodyNode1)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(elseNode, "no")),
                 bodyNode1 to setOf(LinkTo(bodyNode2)),
-                bodyNode2 to setOf(LinkTo(loopEndNode)),
-                loopEndNode to setOf(LinkTo(elseNode)),
+                bodyNode2 to setOf(LinkTo(forNode, phantom = true)),
                 elseNode to setOf(LinkTo(lastNode)),
                 lastNode to emptySet()
         )

@@ -1,7 +1,7 @@
 package edu.kspt.cfgbuilder.cfg
 
 enum class NodeType {
-    BEGIN, FLOW, CONDITION, END, LOOP_BEGIN, LOOP_END
+    BEGIN, FLOW, CONDITION, END, LOOP_BEGIN, BREAK
 }
 
 data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_ID++) {
@@ -9,11 +9,11 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
         var CURRENT_MAX_ID = 0
     }
 
-    fun connectTo(cfg: ControlFlowGraph, linkText: String = "") {
-        cfg[this] = if (cfg.isEmpty()) {
-            emptySet()
+    fun connectTo(cfg: ControlFlowGraph, linkText: String = "", phantom: Boolean = false): ControlFlowGraph {
+        return if (cfg.isEmpty()) {
+            mapOf(this to emptySet())
         } else {
-            setOf(LinkTo(cfg.findStart(), linkText))
+            cfg + mapOf(this to setOf(LinkTo(cfg.findStart(), linkText, phantom)))
         }
     }
 
@@ -29,29 +29,35 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
     }
 }
 
-data class LinkTo(val otherNode: Node, val text: String = "")
+data class LinkTo(val otherNode: Node, val text: String = "", val phantom: Boolean = false)
 
-typealias ControlFlowGraph = MutableMap<Node, Set<LinkTo>>
+typealias ControlFlowGraph = Map<Node, Set<LinkTo>>
+
+fun emptyCfg(): ControlFlowGraph = emptyMap()
 
 fun ControlFlowGraph.findStart(): Node {
     return this.keys.single { node ->
-        node !in this.values.flatMap { it }.map { it.otherNode }
+        node !in this.values.flatMap { it }.filter { it.phantom == false }.map { it.otherNode }
     }
 }
 
-fun ControlFlowGraph.findAllEnds() = this.filterValues { it.isEmpty() }.keys
+fun ControlFlowGraph.findEnds(predicate: (Node) -> Boolean) = this.filter { (k, v) -> predicate(k) && v.isEmpty() }.keys
 
-fun ControlFlowGraph.appendNode(node: Node) {
+fun ControlFlowGraph.findAllEnds() = this.findEnds { true }
+
+fun ControlFlowGraph.findNonBreakEnds() = this.findEnds { it.type != NodeType.BREAK }
+
+fun ControlFlowGraph.findBreakEnds() = this.findEnds { it.type == NodeType.BREAK }
+
+fun ControlFlowGraph.appendNode(node: Node): ControlFlowGraph {
     val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(node)) }.toMap()
-    this.plusAssign(newGraphEntries)
     val newEnd = node to emptySet<LinkTo>()
-    this.plusAssign(newEnd)
+    return this + newGraphEntries + newEnd
 }
 
-fun ControlFlowGraph.concat(other: ControlFlowGraph) {
+fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
     val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(other.findStart())) }.toMap()
-    this.plusAssign(newGraphEntries)
-    this.plusAssign(other)
+    return this + newGraphEntries + other
 }
 
 fun ControlFlowGraph.prettyPrint() {

@@ -1,24 +1,22 @@
 package edu.kspt.cfgbuilder.cfg
 
 import edu.kspt.cfgbuilder.ast.*
+import java.util.*
 
 class CFGBuilder {
     companion object {
         const val PYTHON_MAIN_IF = "__name__==\"__main__\""
     }
 
-//    private val compoundStatementsExits = Stack<Node>()
+    private val cfgsInConstruction = Stack<ControlFlowGraph>()
 
-    private var previousNode: Node? = null
-
-    private var isInsideLoop = false
-
-    private var cfg: ControlFlowGraph = mutableMapOf()
+    private var cfg: ControlFlowGraph = emptyCfg()
 
     fun makeCFG(statements: Statements): ControlFlowGraph {
+        cfgsInConstruction.push(cfg).also { cfg = emptyCfg() }
         val statementsReversedView = removeMainIf(statements).asReversed()
         for (statement in statementsReversedView) {
-            previousNode = when (statement) {
+            when (statement) {
                 is ReturnStatement -> handleReturnStatement(statement)
                 is IfStatement -> handleIfStatement(statement)
                 is LoopStatement -> handleLoopStatement(statement)
@@ -28,49 +26,43 @@ class CFGBuilder {
                 else -> throw IllegalStateException("Unknown statement type")
             }
         }
-        return cfg
+        return cfg.also { cfg = cfgsInConstruction.pop() }
     }
 
     private fun handleReturnStatement(statement: ReturnStatement) =
         Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}")
-                .also { cfg[it] = emptySet() }
+                .also { TODO("cfg[it] = emptySet()") }
 
     private fun handleBreakStatement(statement: BreakStatement) =
-            Node(NodeType.FLOW, "break").also { cfg[it] = emptySet() }
+            Node(NodeType.FLOW, "break").also { TODO("cfg[it] = emptySet()") }
 
     private fun handleSimpleStatement(statement: SimpleStatement) =
-            Node(NodeType.FLOW, statement.text).also { it.connectTo(cfg) }
+            Node(NodeType.FLOW, statement.text).also { cfg = it.connectTo(cfg) }
 
-    private fun handleIfStatement(statement: IfStatement): Node {
-//        compoundStatementsExits.push(previousNode ?: Node(NodeType.END, "return"))
-        var ifStatementCfg = CFGBuilder().makeCFG(statement.elseBranch)
+    private fun handleIfStatement(statement: IfStatement) {
+        var ifStatementCfg = makeCFG(statement.elseBranch)
         for ((test, trueBranch) in (statement.testToBranch.map { it.key to it.value }.asReversed())) {
             ifStatementCfg = Node(NodeType.CONDITION, test)
-                    .join(CFGBuilder().makeCFG(trueBranch), ifStatementCfg, "yes", "no")
+                    .join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
         }
-        previousNode?.let { ifStatementCfg.appendNode(it) }
-//        compoundStatementsExits.pop()
-        cfg.plusAssign(ifStatementCfg)
-        return ifStatementCfg.findStart()
+        cfg = ifStatementCfg.concat(cfg)
     }
 
     private fun handleContinueStatement(statement: ContinueStatement): Node {
         TODO("not implemented")
     }
 
-    private fun handleLoopStatement(statement: LoopStatement): Node {
+    private fun handleLoopStatement(statement: LoopStatement) {
         val loopHead = Node(NodeType.LOOP_BEGIN, statement.condition)
-        val loopTail = Node(NodeType.LOOP_END, "else: ")
-        val loopCfg = CFGBuilder().makeCFG(statement.body)
-        loopCfg.appendNode(loopTail)
-        loopHead.connectTo(loopCfg)
-        if (statement.elseBranch.isNotEmpty()) {
-            val elseBranchCfg = CFGBuilder().makeCFG(statement.elseBranch)
-            loopCfg.concat(elseBranchCfg)
+        val loopBody = makeCFG(statement.body)
+        var loopCfg = if (statement.elseBranch.isNotEmpty()) {
+            loopBody.findBreakEnds().forEach { cfg = it.connectTo(cfg, phantom = true) }
+            loopHead.join(loopBody, makeCFG(statement.elseBranch).concat(cfg), "yes", "no")
+        } else {
+            loopHead.join(loopBody, cfg, "yes", "no")
         }
-        previousNode?.let { loopCfg.appendNode(it) } // "break" will link there as it's one of ends
-        cfg.plusAssign(loopCfg)
-        return loopCfg.findStart()
+        loopBody.findNonBreakEnds().forEach { loopCfg = it.connectTo(loopCfg, phantom = true) }
+        cfg = loopCfg
     }
 
     private fun removeMainIf(statements: Statements): Statements {

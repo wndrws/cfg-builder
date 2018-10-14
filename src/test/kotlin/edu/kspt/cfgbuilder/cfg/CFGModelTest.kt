@@ -1,6 +1,7 @@
 package edu.kspt.cfgbuilder.cfg
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -10,14 +11,13 @@ class CFGModelTest {
     fun `can connect a node to CFG beginning`() {
         // given
         val (begin, cfg) = createCfgWithIfStatement()
-        val originalCfg = cfg.toMap()
         val newBegin = Node(NodeType.BEGIN, "newBegin")
         // when
-        newBegin.connectTo(cfg)
+        val newCfg = newBegin.connectTo(cfg)
         // then
-        assertThat(cfg).containsKey(newBegin)
-        assertThat(cfg[newBegin]).containsOnly(LinkTo(begin))
-        assertThat(cfg.without(newBegin)).isEqualTo(originalCfg)
+        assertThat(newCfg).containsKey(newBegin)
+        assertThat(newCfg[newBegin]).containsOnly(LinkTo(begin))
+        assertThat(newCfg.without(newBegin)).isEqualTo(cfg)
     }
 
     private fun createCfgWithIfStatement(): Pair<Node, ControlFlowGraph> {
@@ -56,7 +56,7 @@ class CFGModelTest {
         assertThat(ex.message).isEqualTo("Collection contains more than one matching element.")
     }
 
-    private fun createPlanarCfg(namingParam: String): Triple<Node, ControlFlowGraph, Node> {
+    private fun createPlanarCfg(namingParam: String = ""): Triple<Node, ControlFlowGraph, Node> {
         val begin = Node(NodeType.FLOW, "beginNode$namingParam")
         val node2 = Node(NodeType.FLOW, "middleNode$namingParam")
         val node3 = Node(NodeType.FLOW, "endNode$namingParam")
@@ -68,7 +68,22 @@ class CFGModelTest {
     }
 
     @Test
-    fun `can find ends of CFG`() {
+    fun `can find break and non-break ends of CFG separately`() {
+        // given
+        val breakEnd = Node(NodeType.BREAK, "break")
+        val cfgWithBreak = createPlanarCfg("1").component2().appendNode(breakEnd)
+        val (_, cfgWithoutBreak, nonBreakEnd) = createPlanarCfg("2")
+        val jointCfg = Node(NodeType.BEGIN, "newBegin").join(cfgWithBreak, cfgWithoutBreak)
+        // when
+        val breakEnds = jointCfg.findBreakEnds()
+        val nonBreakEnds = jointCfg.findNonBreakEnds()
+        // then
+        assertThat(breakEnds).containsExactly(breakEnd)
+        assertThat(nonBreakEnds).containsExactly(nonBreakEnd)
+    }
+
+    @Test
+    fun `can find all ends of CFG`() {
         // given
         val (_, cfg1, end1) = createPlanarCfg("1")
         val (_, cfg2, end2) = createPlanarCfg("2")
@@ -78,5 +93,37 @@ class CFGModelTest {
         val ends = jointCfg.findAllEnds()
         // then
         assertThat(ends).containsExactlyInAnyOrder(end1, end2)
+    }
+
+    @Test
+    fun `can find start of CFG`() {
+        // given
+        val (begin, cfg, _) = createPlanarCfg()
+        // when
+        val start = cfg.findStart()
+        // then
+        assertThat(start).isEqualTo(begin)
+    }
+
+    @Test
+    fun `can find start of CFG with a backward link`() {
+        // given
+        val (begin, cfg, end) = createPlanarCfg()
+        val loopCfg = end.connectTo(cfg, phantom = true)
+        // when
+        val start = loopCfg.findStart()
+        // then
+        assertThat(start).isEqualTo(begin)
+    }
+
+    @Test
+    fun `can't find start of CFG with a backward link that is not marked as backward`() {
+        // given
+        val (_, cfg, end) = createPlanarCfg()
+        val loopCfg = end.connectTo(cfg, phantom = false)
+        // when
+        val ex = catchThrowable { loopCfg.findStart() }
+        // then
+        assertThat(ex).isInstanceOf(NoSuchElementException::class.java)
     }
 }
