@@ -15,6 +15,7 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
+        cfg.prettyPrint()
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
