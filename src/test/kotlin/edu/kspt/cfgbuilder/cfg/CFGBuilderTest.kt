@@ -73,7 +73,7 @@ class CFGBuilderTest {
     }
 
     @Test
-    fun `builder can handle code with for-statements with else-block`() { // without "break"
+    fun `builder can handle code with for-statements with else-block without break`() {
         // given
         val (pythonCode, expectedCfg) = getPythonCodeWithForElseStatement()
         val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
@@ -103,6 +103,41 @@ class CFGBuilderTest {
         )
         return pythonCode to cfg
     }
+
+    @Test
+    fun `builder can handle code with for-statements with else-block and plain break`() {
+        // given
+        val (pythonCode, expectedCfg) = getPythonCodeWithForElseStatementWithPlainBreak()
+        val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
+        // when
+        val cfg = CFGBuilder().makeCFG(stmts)
+        // then
+        assertThat(cfg).containsAllEntriesOf(expectedCfg)
+    }
+
+    private fun getPythonCodeWithForElseStatementWithPlainBreak(): Pair<String, ControlFlowGraph> {
+        val pythonCode = getPythonCodeExample("for_else_statement_plain_break_example")
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 7)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 6)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 4)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 3)
+        val breakNode = Node(NodeType.BREAK, "break", 2)
+        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 5)
+        val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
+        val cfg: ControlFlowGraph = mapOf(
+                firstNode to setOf(LinkTo(secondNode)),
+                secondNode to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(elseNode, "no")),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(breakNode)),
+                breakNode to setOf(LinkTo(lastNode, phantom = true)),
+                elseNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+        return pythonCode to cfg
+    }
+
 
     @BeforeEach
     fun setUp() {

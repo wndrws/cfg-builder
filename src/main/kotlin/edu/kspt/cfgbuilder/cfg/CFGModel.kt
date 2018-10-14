@@ -69,7 +69,8 @@ typealias ControlFlowGraph = Map<Node, Set<LinkTo>>
 fun emptyCfg(): ControlFlowGraph = emptyMap()
 
 fun ControlFlowGraph.findStart(): Node {
-    return this.keys.single { node ->
+    return if (this.size == 1) this.keys.first()
+    else this.keys.filter { it.type != NodeType.BREAK }.single { node ->
         node !in this.values.flatMap { it }.filter { it.phantom == false }.map { it.otherNode }
     }
 }
