@@ -1,10 +1,11 @@
 package edu.kspt.cfgbuilder.cfg
 
 import edu.kspt.cfgbuilder.ast.*
+import mu.KLogging
 import java.util.*
 
 class CFGBuilder {
-    companion object {
+    companion object: KLogging() {
         const val PYTHON_MAIN_IF = "__name__==\"__main__\""
     }
 
@@ -30,11 +31,15 @@ class CFGBuilder {
     }
 
     private fun handleReturnStatement(statement: ReturnStatement) =
-        Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}")
-                .also { TODO("cfg[it] = emptySet()") }
+        startCfgBuilding(Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}"), statement)
 
     private fun handleBreakStatement(statement: BreakStatement) =
-            Node(NodeType.FLOW, "break").also { TODO("cfg[it] = emptySet()") }
+            startCfgBuilding(Node(NodeType.BREAK, "break"), statement)
+
+    private fun startCfgBuilding(node: Node, statement: Statement) {
+        if (cfg.isNotEmpty()) logger.warn { "Unreachable code after $statement (node $node) will not be placed in CFG" }
+        cfg = node.connectTo(emptyCfg())
+    }
 
     private fun handleSimpleStatement(statement: SimpleStatement) =
             Node(NodeType.FLOW, statement.text).also { cfg = it.connectTo(cfg) }
