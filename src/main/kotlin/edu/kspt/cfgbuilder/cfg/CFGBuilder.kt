@@ -11,6 +11,8 @@ class CFGBuilder {
 
     private val cfgsInConstruction = Stack<ControlFlowGraph>()
 
+    private val hangingLinks = Stack<Pair<Node, String>>()
+
     private var cfg: ControlFlowGraph = emptyCfg()
 
     fun makeCFG(statements: Statements): ControlFlowGraph {
@@ -46,11 +48,19 @@ class CFGBuilder {
 
     private fun handleIfStatement(statement: IfStatement) {
         var ifStatementCfg = makeCFG(statement.elseBranch)
-        for ((test, trueBranch) in (statement.testToBranch.map { it.key to it.value }.asReversed())) {
-            ifStatementCfg = Node(NodeType.CONDITION, test)
-                    .join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
+        val testsToBranches = statement.testToBranch.map { it.key to it.value }
+        for ((test, trueBranch) in testsToBranches.asReversed()) {
+            val condition = Node(NodeType.CONDITION, test)
+            ifStatementCfg = if (ifStatementCfg.isNotEmpty()) {
+                condition.join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
+            } else if (cfg.isNotEmpty()) {
+                condition.join(makeCFG(trueBranch), cfg.findStart(), "yes","no")
+            } else {
+                condition.connectTo(makeCFG(trueBranch), "yes")
+                        .also { hangingLinks.push(condition to "no") }
+            }
         }
-        cfg = ifStatementCfg.concat(cfg)
+        cfg = if (cfg.isEmpty()) ifStatementCfg else ifStatementCfg.concat(cfg)
     }
 
     private fun handleContinueStatement(statement: ContinueStatement): Node {
@@ -67,6 +77,10 @@ class CFGBuilder {
             loopHead.join(loopBody, cfg, "yes", "no")
         }
         loopBody.findNonBreakEnds().forEach { loopCfg = it.connectTo(loopCfg, phantom = true) }
+        if (hangingLinks.isNotEmpty()) {
+            val (node, linkText) = hangingLinks.pop()
+            loopCfg = node.connectTo(loopCfg, linkText, phantom = true)
+        }
         cfg = loopCfg
     }
 

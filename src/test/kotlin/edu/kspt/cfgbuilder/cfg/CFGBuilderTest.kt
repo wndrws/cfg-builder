@@ -26,18 +26,69 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
+        cfg.prettyPrint()
         assertThat(cfg).hasSameSizeAs(expectedCfg)
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
     @Suppress("unused")
     fun testMakeCFG() = listOf(
+            "if_statement" to `CFG with simple if`(),
+            "if_else_statement" to `CFG with if-else`(),
+            "if_elif_statement" to `CFG with if-elif`(),
             "if_elif_else_statement" to `CFG with if-elif-else`(),
             "for_statement" to `CFG with simple for`(),
             "for_else_statement" to `CFG with for-else without break`(),
             "for_else_statement_plain_break" to `CFG with for-else with plain break`(),
             "for_else_statement_nested_break" to `CFG with for-else with nested break`()
     ).map { Arguments.of(it.first, it.second) }
+
+    private fun `CFG with simple if`(): ControlFlowGraph {
+        val someValNode = Node(NodeType.FLOW, "someVal=123", 3)
+        val ifCondition = Node(NodeType.CONDITION, "someVal>1", 1)
+        val trueNode = Node(NodeType.FLOW, "print(\">1\")", 2)
+        val lastNode = Node(NodeType.FLOW, "smth=\"\"", 0)
+        return mapOf(
+                someValNode to setOf(LinkTo(ifCondition)),
+                ifCondition to setOf(LinkTo(trueNode, "yes"), LinkTo(lastNode, "no")),
+                trueNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+    }
+
+    private fun `CFG with if-else`(): ControlFlowGraph {
+        val someValNode = Node(NodeType.FLOW, "someVal=123", 4)
+        val ifCondition = Node(NodeType.CONDITION, "someVal>1", 2)
+        val trueNode = Node(NodeType.FLOW, "print(\">1\")", 3)
+        val elseNode = Node(NodeType.FLOW, "print(\"0\")", 1)
+        val lastNode = Node(NodeType.FLOW, "smth=\"\"", 0)
+        return mapOf(
+                someValNode to setOf(LinkTo(ifCondition)),
+                ifCondition to setOf(LinkTo(trueNode, "yes"), LinkTo(elseNode, "no")),
+                elseNode to setOf(LinkTo(lastNode)),
+                trueNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+    }
+
+    private fun `CFG with if-elif`(): ControlFlowGraph {
+        val someValNode = Node(NodeType.FLOW, "someVal=123", 6)
+        val ifCondition = Node(NodeType.CONDITION, "someVal>1", 4)
+        val elifCondition = Node(NodeType.CONDITION, "someVal<1", 1)
+        val trueNode = Node(NodeType.FLOW, "print(\">1\")", 5)
+        val elifNode1 = Node(NodeType.FLOW, "print(\"<1\")",3)
+        val elifNode2 = Node(NodeType.FLOW, "print(\"<2\")",2)
+        val lastNode = Node(NodeType.FLOW, "smth=\"\"", 0)
+        return mapOf(
+                someValNode to setOf(LinkTo(ifCondition)),
+                ifCondition to setOf(LinkTo(trueNode, "yes"), LinkTo(elifCondition, "no")),
+                elifCondition to setOf(LinkTo(elifNode1, "yes"), LinkTo(lastNode, "no")),
+                trueNode to setOf(LinkTo(lastNode)),
+                elifNode1 to setOf(LinkTo(elifNode2)),
+                elifNode2 to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+    }
 
     private fun `CFG with if-elif-else`(): ControlFlowGraph {
         val someValNode = Node(NodeType.FLOW, "someVal=123", 7)

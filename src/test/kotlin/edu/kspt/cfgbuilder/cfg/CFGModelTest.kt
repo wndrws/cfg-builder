@@ -126,4 +126,18 @@ class CFGModelTest {
         // then
         assertThat(ex).isInstanceOf(NoSuchElementException::class.java)
     }
+
+    @Test
+    fun `can concat two CFG that overlap one node`() {
+        // given
+        val (begin1, cfg1, _) = createPlanarCfg("1")
+        val (begin2, cfg2, end2) = createPlanarCfg("2")
+        // when
+        val cfg = cfg1.appendNode(begin2)
+        val concatCfg = cfg.concat(cfg2)
+        // then
+        concatCfg.prettyPrint()
+        assertThat(concatCfg.findStart()).isEqualTo(begin1)
+        assertThat(concatCfg.findAllEnds()).containsExactly(end2)
+    }
 }

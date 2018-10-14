@@ -9,16 +9,20 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
         var CURRENT_MAX_ID = 0
     }
 
-    fun connectTo(cfg: ControlFlowGraph, linkText: String = "", phantom: Boolean = false): ControlFlowGraph {
-        return if (cfg.isEmpty()) {
-            mapOf(this to emptySet())
-        } else {
-            cfg + mapOf(this to setOf(LinkTo(cfg.findStart(), linkText, phantom)))
-        }
-    }
+    fun connectTo(cfg: ControlFlowGraph, linkText: String = "", phantom: Boolean = false) =
+            if (cfg.isEmpty()) {
+                mapOf(this to emptySet())
+            } else {
+                val links = if (cfg.containsKey(this)) {
+                    cfg[this]!!.toMutableSet().also { it.add(LinkTo(cfg.findStart(), linkText, phantom)) }
+                } else {
+                    setOf(LinkTo(cfg.findStart(), linkText, phantom))
+                }
+                cfg + mapOf(this to links)
+            }
 
     fun join(firstCfg: ControlFlowGraph, secondCfg: ControlFlowGraph,
-             firstLinkText: String = "", secondLinkText: String = ""): ControlFlowGraph {
+                  firstLinkText: String = "", secondLinkText: String = ""): ControlFlowGraph {
         val startOfFirstCfg = firstCfg.findStart()
         val startOfSecondCfg = secondCfg.findStart()
         val jointCfg = (firstCfg + secondCfg).toMutableMap()
@@ -28,10 +32,20 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
         return jointCfg
     }
 
+    fun join(cfg: ControlFlowGraph, node: Node,
+             firstLinkText: String = "", secondLinkText: String = ""): ControlFlowGraph {
+        val startOfFirstCfg = cfg.findStart()
+        val jointCfg = (cfg + (node to emptySet())).toMutableMap()
+        jointCfg[this] = setOf(
+                LinkTo(startOfFirstCfg, firstLinkText),
+                LinkTo(node, secondLinkText))
+        return jointCfg
+    }
+
     fun prettyStr(padding: Int) = beginStr() + "${text.padEnd(padding)} | $id " + endStr()
 
     private fun beginStr(): String {
-        return when(type) {
+        return when (type) {
             NodeType.BEGIN -> "BEGIN "
             NodeType.FLOW -> "[ "
             NodeType.CONDITION -> "< "
@@ -42,7 +56,7 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
     }
 
     private fun endStr(): String {
-        return when(type) {
+        return when (type) {
             NodeType.BEGIN -> " "
             NodeType.FLOW -> "]"
             NodeType.CONDITION -> ">"
@@ -83,8 +97,8 @@ fun ControlFlowGraph.findNonBreakEnds() = this.findEnds { it.type != NodeType.BR
 
 fun ControlFlowGraph.findBreakEnds() = this.findEnds { it.type == NodeType.BREAK }
 
-fun ControlFlowGraph.appendNode(node: Node): ControlFlowGraph {
-    val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(node)) }.toMap()
+fun ControlFlowGraph.appendNode(node: Node, linkText: String = ""): ControlFlowGraph {
+    val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(node, linkText)) }.toMap()
     val newEnd = node to emptySet<LinkTo>()
     return this + newGraphEntries + newEnd
 }
@@ -96,7 +110,7 @@ fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
 
 fun ControlFlowGraph.prettyPrint() {
     this.forEach { node, links ->
-        val padding = this.keys.map { it.text.length }.max()?.let { if (it < 50) it else 50  } ?: 0
+        val padding = this.keys.map { it.text.length }.max()?.let { if (it < 50) it else 50 } ?: 0
         println("${node.prettyStr(padding)}: ${links.map { it.prettyStr(padding) }}")
     }
 }
