@@ -15,7 +15,7 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
-        cfg.prettyPrint()
+        assertThat(cfg).hasSameSizeAs(expectedCfg)
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
@@ -50,6 +50,7 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
+        assertThat(cfg).hasSameSizeAs(expectedCfg)
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
@@ -80,6 +81,7 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
+        assertThat(cfg).hasSameSizeAs(expectedCfg)
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
@@ -112,6 +114,7 @@ class CFGBuilderTest {
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
         // then
+        assertThat(cfg).hasSameSizeAs(expectedCfg)
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
