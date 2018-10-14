@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test
 
 class CFGBuilderTest {
     @Test
-    fun `builder can handle code with if-statements`() {
+    fun `builder can handle code with if-elif-else statements`() {
         // given
-        val (pythonCode, expectedCfg) = getPythonCodeWithIfStatements()
+        val (pythonCode, expectedCfg) = getPythonCodeWithIfElifElseStatement()
         val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
         // when
         val cfg = CFGBuilder().makeCFG(stmts)
@@ -19,8 +19,8 @@ class CFGBuilderTest {
         assertThat(cfg).containsAllEntriesOf(expectedCfg)
     }
 
-    private fun getPythonCodeWithIfStatements(): Pair<String, ControlFlowGraph> {
-        val pythonCode = getPythonCodeExample("if_statement_example")
+    private fun getPythonCodeWithIfElifElseStatement(): Pair<String, ControlFlowGraph> {
+        val pythonCode = getPythonCodeExample("if_elif_else_statement_example")
         val someValNode = Node(NodeType.FLOW, "someVal=123", 7)
         val ifCondition = Node(NodeType.CONDITION, "someVal>1", 5)
         val elifCondition = Node(NodeType.CONDITION, "someVal<1", 2)
@@ -29,7 +29,7 @@ class CFGBuilderTest {
         val elifNode2 = Node(NodeType.FLOW, "print(\"<2\")",3)
         val elseNode = Node(NodeType.FLOW, "print(\"0\")", 1)
         val lastNode = Node(NodeType.FLOW, "smth=\"\"", 0)
-        val cfg: ControlFlowGraph = mutableMapOf(
+        val cfg: ControlFlowGraph = mapOf(
                 someValNode to setOf(LinkTo(ifCondition)),
                 ifCondition to setOf(LinkTo(trueNode, "yes"), LinkTo(elifCondition, "no")),
                 elifCondition to setOf(LinkTo(elifNode1, "yes"), LinkTo(elseNode, "no")),
@@ -140,6 +140,44 @@ class CFGBuilderTest {
         )
         return pythonCode to cfg
     }
+
+    @Test
+    fun `builder can handle code with for-statements with else-block and nested break`() {
+        // given
+        val (pythonCode, expectedCfg) = getPythonCodeWithForElseStatementWithNestedBreak()
+        val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
+        // when
+        val cfg = CFGBuilder().makeCFG(stmts)
+        // then
+        assertThat(cfg).hasSameSizeAs(expectedCfg)
+        assertThat(cfg).containsAllEntriesOf(expectedCfg)
+    }
+
+    private fun getPythonCodeWithForElseStatementWithNestedBreak(): Pair<String, ControlFlowGraph> {
+        val pythonCode = getPythonCodeExample("for_else_statement_nested_break_example")
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 8)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 7)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 5)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 4)
+        val ifNode = Node(NodeType.CONDITION, "i==2", 2)
+        val breakNode = Node(NodeType.BREAK, "break", 3)
+        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 6)
+        val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
+        val cfg: ControlFlowGraph = mapOf(
+                firstNode to setOf(LinkTo(secondNode)),
+                secondNode to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(elseNode, "no")),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(ifNode)),
+                ifNode to setOf(LinkTo(breakNode, "yes"), LinkTo(forNode, "no", phantom = true)),
+                breakNode to setOf(LinkTo(lastNode, phantom = true)),
+                elseNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+        return pythonCode to cfg
+    }
+
 
 
     @BeforeEach
