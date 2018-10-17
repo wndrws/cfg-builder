@@ -1,7 +1,7 @@
 package edu.kspt.cfgbuilder.cfg
 
 enum class NodeType {
-    BEGIN, FLOW, CONDITION, END, LOOP_BEGIN, BREAK
+    BEGIN, FLOW, CONDITION, END, LOOP_BEGIN, BREAK, CONTINUE
 }
 
 data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_ID++) {
@@ -52,6 +52,7 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
             NodeType.END -> "END "
             NodeType.LOOP_BEGIN -> "/ "
             NodeType.BREAK -> "\\ "
+            NodeType.CONTINUE -> "- "
         }
     }
 
@@ -63,6 +64,7 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
             NodeType.END -> " "
             NodeType.LOOP_BEGIN -> "\\"
             NodeType.BREAK -> "/"
+            NodeType.CONTINUE -> "-"
         }
     }
 

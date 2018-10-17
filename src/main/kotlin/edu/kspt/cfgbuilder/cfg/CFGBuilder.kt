@@ -5,13 +5,15 @@ import mu.KLogging
 import java.util.*
 
 class CFGBuilder {
-    companion object: KLogging() {
+    companion object : KLogging() {
         const val PYTHON_MAIN_IF = "__name__==\"__main__\""
     }
 
     private val cfgsInConstruction = Stack<ControlFlowGraph>()
 
-    private val hangingLinks = Stack<Pair<Node, String>>()
+    private var loopsDepth = 0
+
+    private val hangingLinks = mutableListOf<Pair<Node, String>>()
 
     private var cfg: ControlFlowGraph = emptyCfg()
 
@@ -32,14 +34,25 @@ class CFGBuilder {
         return cfg.also { cfg = cfgsInConstruction.pop() }
     }
 
-    private fun handleReturnStatement(statement: ReturnStatement) =
-        startCfgBuilding(Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}"), statement)
+    private fun handleReturnStatement(statement: ReturnStatement) = startCfgBuilding(
+            Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}"), statement)
 
     private fun handleBreakStatement(statement: BreakStatement) =
-            startCfgBuilding(Node(NodeType.BREAK, "break"), statement)
+            if (loopsDepth > 0) {
+                startCfgBuilding(Node(NodeType.BREAK, "break"), statement)
+            } else throw IllegalStateException("Input is incorrect: 'break' not inside loop")
+
+    private fun handleContinueStatement(statement: ContinueStatement) =
+            if (loopsDepth > 0) {
+                val node = Node(NodeType.CONTINUE, "continue")
+                startCfgBuilding(node, statement)
+                hangingLinks.add(node to "")
+            } else throw IllegalStateException("Input is incorrect: 'continue' not inside loop")
 
     private fun startCfgBuilding(node: Node, statement: Statement) {
-        if (cfg.isNotEmpty()) logger.warn { "Unreachable code after $statement (node $node) will not be placed in CFG" }
+        if (cfg.isNotEmpty()) {
+            logger.warn { "Unreachable code after $statement (node $node) will not be placed in CFG" }
+        }
         cfg = node.connectTo(emptyCfg())
     }
 
@@ -54,20 +67,17 @@ class CFGBuilder {
             ifStatementCfg = if (ifStatementCfg.isNotEmpty()) {
                 condition.join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
             } else if (cfg.isNotEmpty()) {
-                condition.join(makeCFG(trueBranch), cfg.findStart(), "yes","no")
+                condition.join(makeCFG(trueBranch), cfg.findStart(), "yes", "no")
             } else {
                 condition.connectTo(makeCFG(trueBranch), "yes")
-                        .also { hangingLinks.push(condition to "no") }
+                        .also { hangingLinks.add(condition to "no") }
             }
         }
         cfg = if (cfg.isEmpty()) ifStatementCfg else ifStatementCfg.concat(cfg)
     }
 
-    private fun handleContinueStatement(statement: ContinueStatement): Node {
-        TODO("not implemented")
-    }
-
     private fun handleLoopStatement(statement: LoopStatement) {
+        loopsDepth++
         val loopHead = Node(NodeType.LOOP_BEGIN, statement.condition)
         val loopBody = makeCFG(statement.body)
         var loopCfg = if (statement.elseBranch.isNotEmpty()) {
@@ -77,14 +87,15 @@ class CFGBuilder {
             loopHead.join(loopBody, cfg, "yes", "no")
         }
         loopBody.findNonBreakEnds().forEach { loopCfg = it.connectTo(loopCfg, phantom = true) }
-        if (hangingLinks.isNotEmpty()) {
-            val (node, linkText) = hangingLinks.pop()
+        hangingLinks.forEach { (node, linkText) ->
             loopCfg = node.connectTo(loopCfg, linkText, phantom = true)
-        }
+        }.also { hangingLinks.clear() }
         cfg = loopCfg
+        loopsDepth--
     }
 
     private fun removeMainIf(statements: Statements): Statements {
+        logger.info { "Standard main if-statement condition will not be displayed" }
         val (mainIfStatement, mainIfIndex) = statements.asSequence()
                 .filter { it is IfStatement }
                 .mapIndexed { index, statement -> statement as IfStatement to index }

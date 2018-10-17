@@ -3,8 +3,10 @@ package edu.kspt.cfgbuilder.cfg
 import edu.kspt.cfgbuilder.ParserFacade
 import edu.kspt.cfgbuilder.ast.CFGVisitor
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -21,6 +23,7 @@ class CFGBuilderTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource
     fun testMakeCFG(name: String, expectedCfg: ControlFlowGraph) {
+        // given
         val pythonCode = getPythonCodeExample(name)
         val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
         // when
@@ -42,6 +45,28 @@ class CFGBuilderTest {
             "for_else_statement_plain_break" to `CFG with for-else with plain break`(),
             "for_else_statement_nested_break" to `CFG with for-else with nested break`()
     ).map { Arguments.of(it.first, it.second) }
+
+    @Test
+    fun `if 'continue' is not inside loop, exception is thrown`() {
+        // given
+        val pythonCode = "a = 2; continue; b = 3\n"
+        val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
+        // when
+        val ex = catchThrowable { CFGBuilder().makeCFG(stmts) }
+        // then
+        assertThat(ex).isInstanceOf(IllegalStateException::class.java)
+    }
+
+    @Test
+    fun `if 'break' is not inside loop, exception is thrown`() {
+        // given
+        val pythonCode = "a = 2; break; b = 3\n"
+        val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
+        // when
+        val ex = catchThrowable { CFGBuilder().makeCFG(stmts) }
+        // then
+        assertThat(ex).isInstanceOf(IllegalStateException::class.java)
+    }
 
     private fun `CFG with simple if`(): ControlFlowGraph {
         val someValNode = Node(NodeType.FLOW, "someVal=123", 3)
