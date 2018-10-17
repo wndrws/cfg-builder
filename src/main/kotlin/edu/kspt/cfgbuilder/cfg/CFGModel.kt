@@ -106,7 +106,8 @@ fun ControlFlowGraph.appendNode(node: Node, linkText: String = ""): ControlFlowG
 }
 
 fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
-    val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(other.findStart())) }.toMap()
+    val newGraphEntries = this.findAllEnds().filter { it.type != NodeType.CONTINUE }
+            .map { it to setOf(LinkTo(other.findStart())) }.toMap()
     return this + newGraphEntries + other
 }
 
