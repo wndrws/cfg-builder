@@ -4,7 +4,7 @@ import edu.kspt.cfgbuilder.ast.*
 import mu.KLogging
 import java.util.*
 
-class CFGBuilder {
+class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
     companion object : KLogging() {
         const val PYTHON_MAIN_IF = "__name__==\"__main__\""
     }
@@ -17,7 +17,7 @@ class CFGBuilder {
 
     private var cfg: ControlFlowGraph = emptyCfg()
 
-    fun makeCFG(statements: Statements): ControlFlowGraph {
+    fun makeCFG(statements: Statements, funName: String = ""): ControlFlowGraph {
         cfgsInConstruction.push(cfg).also { cfg = emptyCfg() }
         val statementsReversedView = removeMainIf(statements).asReversed()
         for (statement in statementsReversedView) {
@@ -31,6 +31,7 @@ class CFGBuilder {
                 else -> throw IllegalStateException("Unknown statement type")
             }
         }
+        if (cfgsInConstruction.size == 1) enclose(funName)
         return cfg.also { cfg = cfgsInConstruction.pop() }
     }
 
@@ -105,5 +106,14 @@ class CFGBuilder {
         val statementsBeforeMainIf = statements.subList(0, mainIfIndex)
         val statementsAfterMainIf = statements.subList(mainIfIndex + 1, statements.size)
         return statementsBeforeMainIf + mainStatements + statementsAfterMainIf
+    }
+
+    private fun enclose(funName: String) {
+        if (encloseOnlyIfNeeded && hangingLinks.isEmpty()) return
+        val lastNode = Node(NodeType.END, "return")
+        cfg = Node(NodeType.BEGIN, funName).connectTo(cfg.appendNode(lastNode))
+        hangingLinks.forEach { (node, linkText) ->
+            cfg = cfg.addLinkDirectly(node, LinkTo(lastNode, linkText))
+        }.also { hangingLinks.clear() }
     }
 }

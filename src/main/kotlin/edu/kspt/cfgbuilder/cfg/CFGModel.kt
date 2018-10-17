@@ -46,10 +46,10 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
 
     private fun beginStr(): String {
         return when (type) {
-            NodeType.BEGIN -> "BEGIN "
+            NodeType.BEGIN -> "{ "
             NodeType.FLOW -> "[ "
             NodeType.CONDITION -> "< "
-            NodeType.END -> "END "
+            NodeType.END -> "{ "
             NodeType.LOOP_BEGIN -> "/ "
             NodeType.BREAK -> "\\ "
             NodeType.CONTINUE -> "- "
@@ -58,10 +58,10 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
 
     private fun endStr(): String {
         return when (type) {
-            NodeType.BEGIN -> " "
+            NodeType.BEGIN -> "}"
             NodeType.FLOW -> "]"
             NodeType.CONDITION -> ">"
-            NodeType.END -> " "
+            NodeType.END -> "}"
             NodeType.LOOP_BEGIN -> "\\"
             NodeType.BREAK -> "/"
             NodeType.CONTINUE -> "-"
@@ -108,6 +108,12 @@ fun ControlFlowGraph.appendNode(node: Node, linkText: String = ""): ControlFlowG
 fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
     val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(other.findStart())) }.toMap()
     return this + newGraphEntries + other
+}
+
+fun ControlFlowGraph.addLinkDirectly(source: Node, link: LinkTo): ControlFlowGraph {
+    return this[source]?.let {
+        this.toMutableMap().apply { this[source] = it + link }
+    } ?: throw NoSuchElementException("Node $source not found in CFG!")
 }
 
 fun ControlFlowGraph.prettyPrint() {
