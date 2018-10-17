@@ -95,12 +95,12 @@ class CFGBuilder {
     }
 
     private fun removeMainIf(statements: Statements): Statements {
-        logger.info { "Standard main if-statement condition will not be displayed" }
         val (mainIfStatement, mainIfIndex) = statements.asSequence()
                 .filter { it is IfStatement }
                 .mapIndexed { index, statement -> statement as IfStatement to index }
                 .find { it.first.testToBranch.containsKey(PYTHON_MAIN_IF) }
                 ?: return statements
+        logger.info { "Standard main if-statement condition will not be displayed" }
         val mainStatements = mainIfStatement.testToBranch[PYTHON_MAIN_IF]!!
         val statementsBeforeMainIf = statements.subList(0, mainIfIndex)
         val statementsAfterMainIf = statements.subList(mainIfIndex + 1, statements.size)
