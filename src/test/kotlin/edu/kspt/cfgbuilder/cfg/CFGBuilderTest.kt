@@ -52,7 +52,9 @@ class CFGBuilderTest {
             "nested_for_statements_with_break" to `CFG with nested fors with break`(),
             "nested_for_statements_with_break_alt" to `CFG with nested fors with break alt`(),
             "nested_for_statements_with_continue" to `CFG with nested fors with continue`(),
-            "nested_for_statements_with_continue_alt" to `CFG with nested fors with continue alt`()
+            "nested_for_statements_with_continue_alt" to `CFG with nested fors with continue alt`(),
+            "complex_nested_statements" to `complex CFG with nested statements`(),
+            "complex_nested_statements_alt" to `complex CFG with nested statements alt`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -442,6 +444,62 @@ class CFGBuilderTest {
                 innerFor to setOf(LinkTo(bodyNode3, "yes"), LinkTo(continueNode2, "no")),
                 bodyNode3 to setOf(LinkTo(innerFor, phantom = true)),
                 continueNode2 to setOf(LinkTo(middleFor, phantom = true)),
+                endNode to emptySet()
+        )
+    }
+
+    private fun `complex CFG with nested statements`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 10)
+        val node1 = Node(NodeType.FLOW, "lower=900", 8)
+        val node2 = Node(NodeType.FLOW, "upper=1000", 7)
+        val node3 = Node(NodeType.FLOW, "print(\"Prime numbers between\",lower,\"and\",upper,\"are:\")", 6)
+        val outerFor = Node(NodeType.LOOP_BEGIN, "num in range(lower,upper+1)", 0)
+        val outerIf = Node(NodeType.CONDITION, "num>1", 1)
+        val innerFor = Node(NodeType.LOOP_BEGIN, "i in range(2,num)", 2)
+        val innerIf = Node(NodeType.CONDITION, "(num%i)==0", 3)
+        val breakNode = Node(NodeType.BREAK, "break", 4)
+        val elseNode = Node(NodeType.FLOW, "print(num)", 5)
+        val endNode = Node(NodeType.END, "return", 9)
+        return mapOf(
+                beginNode to setOf(LinkTo(node1)),
+                node1 to setOf(LinkTo(node2)),
+                node2 to setOf(LinkTo(node3)),
+                node3 to setOf(LinkTo(outerFor)),
+                outerFor to setOf(LinkTo(outerIf, "yes"), LinkTo(endNode, "no")),
+                outerIf to setOf(LinkTo(innerFor, "yes"), LinkTo(outerFor, "no", phantom = true)),
+                innerFor to setOf(LinkTo(innerIf, "yes"), LinkTo(elseNode, "no")),
+                innerIf to setOf(LinkTo(breakNode, "yes"), LinkTo(innerFor, "no", phantom = true)),
+                breakNode to setOf(LinkTo(outerFor, phantom = true)),
+                elseNode to setOf(LinkTo(outerFor, phantom = true)),
+                endNode to emptySet()
+        )
+    }
+
+    private fun `complex CFG with nested statements alt`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 11)
+        val node1 = Node(NodeType.FLOW, "lower=900", 9)
+        val node2 = Node(NodeType.FLOW, "upper=1000", 8)
+        val node3 = Node(NodeType.FLOW, "print(\"Prime numbers between\",lower,\"and\",upper,\"are:\")", 7)
+        val outerFor = Node(NodeType.LOOP_BEGIN, "num in range(lower,upper+1)", 0)
+        val outerIf = Node(NodeType.CONDITION, "num>1", 1)
+        val innerFor = Node(NodeType.LOOP_BEGIN, "i in range(2,num)", 3)
+        val innerIf = Node(NodeType.CONDITION, "(num%i)==0", 4)
+        val breakNode = Node(NodeType.BREAK, "break", 5)
+        val elseNode = Node(NodeType.FLOW, "print(num)", 6)
+        val nodeAfterForElse = Node(NodeType.FLOW, "print(\"done!\")", 2)
+        val endNode = Node(NodeType.END, "return", 10)
+        return mapOf(
+                beginNode to setOf(LinkTo(node1)),
+                node1 to setOf(LinkTo(node2)),
+                node2 to setOf(LinkTo(node3)),
+                node3 to setOf(LinkTo(outerFor)),
+                outerFor to setOf(LinkTo(outerIf, "yes"), LinkTo(endNode, "no")),
+                outerIf to setOf(LinkTo(innerFor, "yes"), LinkTo(outerFor, "no", phantom = true)),
+                innerFor to setOf(LinkTo(innerIf, "yes"), LinkTo(elseNode, "no")),
+                innerIf to setOf(LinkTo(breakNode, "yes"), LinkTo(innerFor, "no", phantom = true)),
+                breakNode to setOf(LinkTo(nodeAfterForElse, phantom = true)),
+                elseNode to setOf(LinkTo(nodeAfterForElse)),
+                nodeAfterForElse to setOf(LinkTo(outerFor, phantom = true)),
                 endNode to emptySet()
         )
     }

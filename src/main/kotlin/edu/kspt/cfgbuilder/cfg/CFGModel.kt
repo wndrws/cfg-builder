@@ -42,7 +42,10 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
         return jointCfg
     }
 
-    fun prettyStr(padding: Int) = beginStr() + "${text.padEnd(padding)} | $id " + endStr()
+    fun prettyStr(padding: Int) =
+            beginStr() + "${text.padEnd(padding).let {
+                if (it.length > padding) it.take(padding - 3) + "..." else it }
+            } | $id " + endStr()
 
     private fun beginStr(): String {
         return when (type) {
@@ -119,7 +122,7 @@ fun ControlFlowGraph.linkNodesDirectly(source: Node, link: LinkTo): ControlFlowG
 
 fun ControlFlowGraph.prettyPrint() {
     this.forEach { node, links ->
-        val padding = this.keys.map { it.text.length }.max()?.let { if (it < 50) it else 50 } ?: 0
+        val padding = this.keys.map { it.text.length }.max()?.let { if (it < 30) it else 30 } ?: 0
         println("${node.prettyStr(padding)}: ${links.map { it.prettyStr(padding) }}")
     }
 }

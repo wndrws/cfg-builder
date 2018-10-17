@@ -19,6 +19,8 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
 
     private val hangingLinksByDepth = mutableListOf<MutableList<Pair<Node, String>>>()
 
+    private val breaksByLoopsDepth = mutableListOf<MutableList<Pair<Node, String>>>()
+
     fun makeCFG(statements: Statements, funName: String = ""): ControlFlowGraph {
         cfgsInConstruction.push(cfg).also { cfg = emptyCfg() }
         depth++
@@ -72,21 +74,26 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
             Node(NodeType.FLOW, statement.text).also { cfg = it.connectTo(cfg) }
 
     private fun handleIfStatement(statement: IfStatement) {
-        var ifStatementCfg = makeCFG(statement.elseBranch)
+        var ifStmtCfg = makeCFG(statement.elseBranch)
         val testsToBranches = statement.testToBranch.map { it.key to it.value }
         for ((test, trueBranch) in testsToBranches.asReversed()) {
             val condition = Node(NodeType.CONDITION, test)
-            ifStatementCfg = if (ifStatementCfg.isNotEmpty()) {
-                condition.join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
-            } else if (cfg.isNotEmpty()) {
-                condition.join(makeCFG(trueBranch), cfg, "yes", "no")
-            } else {
-                condition.connectTo(makeCFG(trueBranch), "yes")
-                        .also { addHangingLink(condition to "no") }
+            ifStmtCfg = when {
+                ifStmtCfg.isNotEmpty() -> makeIfCfgWithElse(condition, trueBranch, ifStmtCfg)
+                cfg.isNotEmpty() -> makeIfCfgWithElse(condition, trueBranch, cfg)
+                else -> makeIfCfgWithHangingElse(condition, trueBranch)
             }
         }
-        cfg = if (cfg.isEmpty()) ifStatementCfg else ifStatementCfg.concat(cfg)
+        cfg = if (cfg.isEmpty()) ifStmtCfg else ifStmtCfg.concat(cfg)
     }
+
+    private fun makeIfCfgWithElse(condition: Node, trueBranch: Statements,
+                                  elseBranchCfg: ControlFlowGraph) =
+            condition.join(makeCFG(trueBranch), elseBranchCfg, "yes", "no")
+
+    private fun makeIfCfgWithHangingElse(condition: Node, trueBranch: Statements) =
+            condition.connectTo(makeCFG(trueBranch), "yes")
+                    .also { addHangingLink(condition to "no") }
 
     private fun handleLoopStatement(statement: LoopStatement) {
         val loopHead = Node(NodeType.LOOP_BEGIN, statement.condition)
@@ -101,8 +108,13 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
 
     private fun makeLoopCfgWithElse(loopHead: Node, loopBody: ControlFlowGraph,
                                     statement: LoopStatement): ControlFlowGraph {
-        loopBody.findBreakEnds().forEach { cfg = it.connectTo(cfg, phantom = true) }
-        return loopHead.join(loopBody, makeCFG(statement.elseBranch).concat(cfg), "yes", "no")
+        return if (cfg.isNotEmpty()) {
+            loopBody.findBreakEnds().forEach { cfg = it.connectTo(cfg, phantom = true) }
+            loopHead.join(loopBody, makeCFG(statement.elseBranch).concat(cfg), "yes", "no")
+        } else {
+            loopBody.findBreakEnds().forEach { addHangingLink(it to "") }
+            loopHead.join(loopBody, makeCFG(statement.elseBranch), "yes", "no")
+        }
     }
 
     private fun makeSimpleLoopCfg(loopHead: Node, loopBody: ControlFlowGraph): ControlFlowGraph {
