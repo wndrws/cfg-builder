@@ -45,7 +45,9 @@ class CFGBuilderTest {
             "for_else_statement_plain_break" to `CFG with for-else with plain break`(),
             "for_else_statement_nested_break" to `CFG with for-else with nested break`(),
             "for_else_statement_plain_continue" to `CFG with for-else with plain continue`(),
-            "for_else_statement_nested_continue" to `CFG with for-else with nested continue`()
+            "for_else_statement_nested_continue" to `CFG with for-else with nested continue`(),
+            "nested_if_statements" to `CFG with nested ifs`(),
+            "nested_if_else_statements" to `CFG with nested if-elses`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -261,6 +263,56 @@ class CFGBuilderTest {
                 innerElseNode to setOf(LinkTo(forNode, phantom = true)),
                 elseNode to setOf(LinkTo(lastNode)),
                 lastNode to emptySet()
+        )
+    }
+
+    private fun `CFG with nested ifs`(): ControlFlowGraph {
+        val someValNode = Node(NodeType.FLOW, "someVal=123", 6)
+        val outerIf = Node(NodeType.CONDITION, "someVal>1", 0)
+        val print1 = Node(NodeType.FLOW, "print(\"1\")", 5)
+        val middleIf = Node(NodeType.CONDITION, "someVal>2", 1)
+        val print2 = Node(NodeType.FLOW, "print(\"2\")", 4)
+        val innerIf = Node(NodeType.CONDITION, "someVal>3", 2)
+        val print3 = Node(NodeType.FLOW, "print(\"3\")", 3)
+        val endNode = Node(NodeType.END, "return", 7)
+        val beginNode = Node(NodeType.BEGIN, "", 8)
+        return mapOf(
+                beginNode to setOf(LinkTo(someValNode)),
+                someValNode to setOf(LinkTo(outerIf)),
+                outerIf to setOf(LinkTo(print1, "yes"), LinkTo(endNode, "no")),
+                print1 to setOf(LinkTo(middleIf)),
+                middleIf to setOf(LinkTo(print2, "yes"), LinkTo(endNode, "no")),
+                print2 to setOf(LinkTo(innerIf)),
+                innerIf to setOf(LinkTo(print3, "yes"), LinkTo(endNode, "no")),
+                print3 to setOf(LinkTo(endNode)),
+                endNode to emptySet()
+        )
+    }
+
+    private fun `CFG with nested if-elses`(): ControlFlowGraph {
+        val someValNode = Node(NodeType.FLOW, "someVal=123", 8)
+        val outerIf = Node(NodeType.CONDITION, "someVal>1", 1)
+        val print1 = Node(NodeType.FLOW, "print(\"1\")", 7)
+        val else1 = Node(NodeType.FLOW, "print(\"not 1\")", 0)
+        val middleIf = Node(NodeType.CONDITION, "someVal>2", 2)
+        val print2 = Node(NodeType.FLOW, "print(\"2\")", 6)
+        val innerIf = Node(NodeType.CONDITION, "someVal>3", 4)
+        val print3 = Node(NodeType.FLOW, "print(\"3\")", 5)
+        val else3 = Node(NodeType.FLOW, "print(\"not 3\")", 3)
+        val endNode = Node(NodeType.END, "return", 9)
+        val beginNode = Node(NodeType.BEGIN, "", 10)
+        return mapOf(
+                beginNode to setOf(LinkTo(someValNode)),
+                someValNode to setOf(LinkTo(outerIf)),
+                outerIf to setOf(LinkTo(print1, "yes"), LinkTo(else1, "no")),
+                print1 to setOf(LinkTo(middleIf)),
+                middleIf to setOf(LinkTo(print2, "yes"), LinkTo(endNode, "no")),
+                print2 to setOf(LinkTo(innerIf)),
+                innerIf to setOf(LinkTo(print3, "yes"), LinkTo(else3, "no")),
+                print3 to setOf(LinkTo(endNode)),
+                else1 to setOf(LinkTo(endNode)),
+                else3 to setOf(LinkTo(endNode)),
+                endNode to emptySet()
         )
     }
 }
