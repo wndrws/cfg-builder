@@ -43,7 +43,9 @@ class CFGBuilderTest {
             "for_statement" to `CFG with simple for`(),
             "for_else_statement" to `CFG with for-else without break`(),
             "for_else_statement_plain_break" to `CFG with for-else with plain break`(),
-            "for_else_statement_nested_break" to `CFG with for-else with nested break`()
+            "for_else_statement_nested_break" to `CFG with for-else with nested break`(),
+            "for_else_statement_plain_continue" to `CFG with for-else with plain continue`(),
+            "for_else_statement_nested_continue" to `CFG with for-else with nested continue`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -211,6 +213,52 @@ class CFGBuilderTest {
                 bodyNode2 to setOf(LinkTo(ifNode)),
                 ifNode to setOf(LinkTo(breakNode, "yes"), LinkTo(forNode, "no", phantom = true)),
                 breakNode to setOf(LinkTo(lastNode, phantom = true)),
+                elseNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+    }
+
+    private fun `CFG with for-else with plain continue`(): ControlFlowGraph {
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 8)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 7)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 5)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 4)
+        val continueNode = Node(NodeType.CONTINUE, "continue", 3)
+        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 6)
+        val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
+        return mapOf(
+                firstNode to setOf(LinkTo(secondNode)),
+                secondNode to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(elseNode, "no")),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(continueNode)),
+                continueNode to setOf(LinkTo(forNode, phantom = true)),
+                elseNode to setOf(LinkTo(lastNode)),
+                lastNode to emptySet()
+        )
+    }
+
+    private fun `CFG with for-else with nested continue`(): ControlFlowGraph {
+        val firstNode = Node(NodeType.FLOW, "smth1=1", 9)
+        val secondNode = Node(NodeType.FLOW, "smth2=2", 8)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(smth2)", 1)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 6)
+        val bodyNode2 = Node(NodeType.FLOW, "print(i+1)", 5)
+        val ifNode = Node(NodeType.CONDITION, "i==3", 3)
+        val continueNode = Node(NodeType.CONTINUE, "continue", 4)
+        val innerElseNode = Node(NodeType.FLOW, "print(i+2)", 2)
+        val elseNode = Node(NodeType.FLOW, "print(\"else\")", 7)
+        val lastNode = Node(NodeType.FLOW, "smth3=3", 0)
+        return mapOf(
+                firstNode to setOf(LinkTo(secondNode)),
+                secondNode to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(bodyNode1, "yes"), LinkTo(elseNode, "no")),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(ifNode)),
+                ifNode to setOf(LinkTo(continueNode, "yes"), LinkTo(innerElseNode, "no")),
+                continueNode to setOf(LinkTo(forNode, phantom = true)),
+                innerElseNode to setOf(LinkTo(forNode, phantom = true)),
                 elseNode to setOf(LinkTo(lastNode)),
                 lastNode to emptySet()
         )
