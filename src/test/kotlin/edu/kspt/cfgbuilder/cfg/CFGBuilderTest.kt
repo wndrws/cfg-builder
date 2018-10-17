@@ -48,7 +48,8 @@ class CFGBuilderTest {
             "for_else_statement_nested_continue" to `CFG with for-else with nested continue`(),
             "nested_if_statements" to `CFG with nested ifs`(),
             "nested_if_else_statements" to `CFG with nested if-elses`(),
-            "nested_for_statements" to `CFG with nested fors`()
+            "nested_for_statements" to `CFG with nested fors`(),
+            "nested_for_statements_with_break" to `CFG with nested fors with break`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -334,6 +335,31 @@ class CFGBuilderTest {
                 bodyNode2 to setOf(LinkTo(innerFor)),
                 innerFor to setOf(LinkTo(bodyNode3, "yes"), LinkTo(middleFor, "no", phantom = true)),
                 bodyNode3 to setOf(LinkTo(innerFor, phantom = true)),
+                endNode to emptySet()
+        )
+    }
+
+    private fun `CFG with nested fors with break`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 9)
+        val outerFor = Node(NodeType.LOOP_BEGIN, "i in range(10)", 0)
+        val middleFor = Node(NodeType.LOOP_BEGIN, "j in range(20)", 1)
+        val innerFor = Node(NodeType.LOOP_BEGIN, "k in range(3)", 4)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 7)
+        val bodyNode2 = Node(NodeType.FLOW, "print(j)", 6)
+        val bodyNode3 = Node(NodeType.FLOW, "print(k)", 5)
+        val ifNode = Node(NodeType.CONDITION, "i==10", 2)
+        val breakNode = Node(NodeType.BREAK, "break", 3)
+        val endNode = Node(NodeType.END, "return", 8)
+        return mapOf(
+                beginNode to setOf(LinkTo(outerFor)),
+                outerFor to setOf(LinkTo(middleFor, "yes"), LinkTo(endNode, "no")),
+                middleFor to setOf(LinkTo(bodyNode1, "yes"), LinkTo(outerFor, "no", phantom = true)),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(innerFor)),
+                innerFor to setOf(LinkTo(bodyNode3, "yes"), LinkTo(ifNode, "no")),
+                bodyNode3 to setOf(LinkTo(innerFor, phantom = true)),
+                ifNode to setOf(LinkTo(breakNode, "yes"), LinkTo(middleFor, "no", phantom = true)),
+                breakNode to setOf(LinkTo(outerFor, phantom = true)),
                 endNode to emptySet()
         )
     }
