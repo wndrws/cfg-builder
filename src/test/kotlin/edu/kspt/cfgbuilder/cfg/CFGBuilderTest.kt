@@ -47,7 +47,8 @@ class CFGBuilderTest {
             "for_else_statement_plain_continue" to `CFG with for-else with plain continue`(),
             "for_else_statement_nested_continue" to `CFG with for-else with nested continue`(),
             "nested_if_statements" to `CFG with nested ifs`(),
-            "nested_if_else_statements" to `CFG with nested if-elses`()
+            "nested_if_else_statements" to `CFG with nested if-elses`(),
+            "nested_for_statements" to `CFG with nested fors`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -312,6 +313,27 @@ class CFGBuilderTest {
                 print3 to setOf(LinkTo(endNode)),
                 else1 to setOf(LinkTo(endNode)),
                 else3 to setOf(LinkTo(endNode)),
+                endNode to emptySet()
+        )
+    }
+
+    private fun `CFG with nested fors`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 7)
+        val outerFor = Node(NodeType.LOOP_BEGIN, "i in range(10)", 0)
+        val middleFor = Node(NodeType.LOOP_BEGIN, "j in range(20)", 1)
+        val innerFor = Node(NodeType.LOOP_BEGIN, "k in range(3)", 2)
+        val bodyNode1 = Node(NodeType.FLOW, "print(i)", 5)
+        val bodyNode2 = Node(NodeType.FLOW, "print(j)", 4)
+        val bodyNode3 = Node(NodeType.FLOW, "print(k)", 3)
+        val endNode = Node(NodeType.END, "return", 6)
+        return mapOf(
+                beginNode to setOf(LinkTo(outerFor)),
+                outerFor to setOf(LinkTo(middleFor, "yes"), LinkTo(endNode, "no")),
+                middleFor to setOf(LinkTo(bodyNode1, "yes"), LinkTo(outerFor, "no", phantom = true)),
+                bodyNode1 to setOf(LinkTo(bodyNode2)),
+                bodyNode2 to setOf(LinkTo(innerFor)),
+                innerFor to setOf(LinkTo(bodyNode3, "yes"), LinkTo(middleFor, "no", phantom = true)),
+                bodyNode3 to setOf(LinkTo(innerFor, phantom = true)),
                 endNode to emptySet()
         )
     }

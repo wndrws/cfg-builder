@@ -110,10 +110,10 @@ fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
     return this + newGraphEntries + other
 }
 
-fun ControlFlowGraph.addLinkDirectly(source: Node, link: LinkTo): ControlFlowGraph {
+fun ControlFlowGraph.linkNodesDirectly(source: Node, link: LinkTo): ControlFlowGraph {
     return this[source]?.let {
         this.toMutableMap().apply { this[source] = it + link }
-    } ?: throw NoSuchElementException("Node $source not found in CFG!")
+    } ?: this.toMutableMap().apply { this[source] = setOf(link) }
 }
 
 fun ControlFlowGraph.prettyPrint() {

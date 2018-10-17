@@ -13,7 +13,7 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
 
     private var loopsDepth = 0
 
-    private val hangingLinks = mutableListOf<Pair<Node, String>>()
+    private val hangingLinks = ArrayDeque<Pair<Node, String>>()
 
     private var cfg: ControlFlowGraph = emptyCfg()
 
@@ -68,7 +68,7 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
             ifStatementCfg = if (ifStatementCfg.isNotEmpty()) {
                 condition.join(makeCFG(trueBranch), ifStatementCfg, "yes", "no")
             } else if (cfg.isNotEmpty()) {
-                condition.join(makeCFG(trueBranch), cfg.findStart(), "yes", "no")
+                makeCompoundCfg(condition, makeCFG(trueBranch))
             } else {
                 condition.connectTo(makeCFG(trueBranch), "yes")
                         .also { hangingLinks.add(condition to "no") }
@@ -79,20 +79,45 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
 
     private fun handleLoopStatement(statement: LoopStatement) {
         loopsDepth++
+        var newHangingLinks = 0
         val loopHead = Node(NodeType.LOOP_BEGIN, statement.condition)
         val loopBody = makeCFG(statement.body)
-        var loopCfg = if (statement.elseBranch.isNotEmpty()) {
-            loopBody.findBreakEnds().forEach { cfg = it.connectTo(cfg, phantom = true) }
-            loopHead.join(loopBody, makeCFG(statement.elseBranch).concat(cfg), "yes", "no")
-        } else {
-            loopHead.join(loopBody, cfg, "yes", "no")
+        val loopCfg = when {
+            statement.elseBranch.isNotEmpty() -> makeLoopCfgWithElse(loopHead, loopBody, statement)
+            cfg.isNotEmpty() -> makeCompoundCfg(loopHead, loopBody)
+            else -> makeLoopCfgWithHangingExit(loopHead, loopBody).also { newHangingLinks++ }
         }
-        loopBody.findNonBreakEnds().forEach { loopCfg = it.connectTo(loopCfg, phantom = true) }
-        hangingLinks.forEach { (node, linkText) ->
-            loopCfg = node.connectTo(loopCfg, linkText, phantom = true)
-        }.also { hangingLinks.clear() }
-        cfg = loopCfg
+        cfg = closeHangingLinks(newHangingLinks, closeLoop(loopBody, loopCfg))
         loopsDepth--
+    }
+
+    private fun makeLoopCfgWithElse(loopHead: Node, loopBody: ControlFlowGraph,
+                                    statement: LoopStatement): ControlFlowGraph {
+        loopBody.findBreakEnds().forEach { cfg = it.connectTo(cfg, phantom = true) }
+        return loopHead.join(loopBody, makeCFG(statement.elseBranch).concat(cfg), "yes", "no")
+    }
+
+    private fun makeCompoundCfg(loopHead: Node, loopBody: ControlFlowGraph) =
+            loopHead.join(loopBody, cfg, "yes", "no")
+
+    private fun makeLoopCfgWithHangingExit(loopHead: Node, loopBody: ControlFlowGraph) =
+            loopHead.connectTo(loopBody, "yes").also { hangingLinks.add(loopHead to "no") }
+
+    private fun closeLoop(loopBody: ControlFlowGraph, loopCfg: ControlFlowGraph): ControlFlowGraph {
+        var updatedLoopCfg = loopCfg
+        loopBody.findNonBreakEnds().forEach {
+            updatedLoopCfg = it.connectTo(updatedLoopCfg, phantom = true)
+        }
+        return updatedLoopCfg
+    }
+
+    private fun closeHangingLinks(linkCntToDrop: Int, loopCfg: ControlFlowGraph): ControlFlowGraph {
+        var updatedLoopCfg = loopCfg
+        hangingLinks.take(hangingLinks.size - linkCntToDrop).forEach { (node, linkText) ->
+            updatedLoopCfg = node.connectTo(updatedLoopCfg, linkText, phantom = true)
+            hangingLinks.removeFirst()
+        }
+        return updatedLoopCfg
     }
 
     private fun removeMainIf(statements: Statements): Statements {
@@ -111,9 +136,10 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
     private fun enclose(funName: String) {
         if (encloseOnlyIfNeeded && hangingLinks.isEmpty()) return
         val lastNode = Node(NodeType.END, "return")
-        cfg = Node(NodeType.BEGIN, funName).connectTo(cfg.appendNode(lastNode))
+        cfg = Node(NodeType.BEGIN, funName).connectTo(cfg)
         hangingLinks.forEach { (node, linkText) ->
-            cfg = cfg.addLinkDirectly(node, LinkTo(lastNode, linkText))
+            cfg = cfg.linkNodesDirectly(node, LinkTo(lastNode, linkText))
         }.also { hangingLinks.clear() }
+        cfg = cfg.appendNode(lastNode)
     }
 }
