@@ -1,7 +1,7 @@
-# import aenum
+import aenum
 
 def sum(a, b):
-    # import numpy
+    import numpy
     if a > b:
         print(1)
         for i in range(1, 20):

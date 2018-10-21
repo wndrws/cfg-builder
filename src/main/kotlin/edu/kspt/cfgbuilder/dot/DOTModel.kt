@@ -5,6 +5,10 @@ import edu.kspt.cfgbuilder.cfg.LinkTo
 import edu.kspt.cfgbuilder.cfg.Node
 import edu.kspt.cfgbuilder.cfg.NodeType
 
+private enum class GraphType(val token: String) {
+    DIGRAPH("digraph"), SUBGRAPH("subgraph")
+}
+
 fun Node.nodeId() = "node" + this.id
 
 fun Node.shape() = when(this.type) {
@@ -31,16 +35,23 @@ fun Node.escapedText() = this.text.replace(""""""", """\"""")
 
 fun LinkTo.escapedText() = this.text.replace(""""""", """\"""")
 
-fun ControlFlowGraph.asDOT(name: String) = StringBuilder()
-        .startGraph(name)
+fun Iterable<ControlFlowGraph>.asDOT() =
+        this.joinToString("\n", "${GraphType.DIGRAPH.token} {\n", "\n}") {
+            it.asDOT(GraphType.SUBGRAPH)
+        }
+
+fun ControlFlowGraph.asDOT(name: String) = this.asDOT(GraphType.DIGRAPH, name)
+
+private fun ControlFlowGraph.asDOT(graphType: GraphType, name: String = "") = StringBuilder()
+        .startGraph(graphType, name)
         .describeCommonStyle()
         .declareNodes(this.keys)
         .describeCfg(this)
         .endGraph()
         .toString()
 
-private fun StringBuilder.startGraph(name: String): StringBuilder {
-    appendln("digraph $name {")
+private fun StringBuilder.startGraph(graphType: GraphType, name: String): StringBuilder {
+    appendln("${graphType.token} $name {")
     return this
 }
 
