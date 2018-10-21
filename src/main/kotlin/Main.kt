@@ -13,9 +13,9 @@ object Main {
     fun main(args: Array<String>) {
         val funcListener = FunctionDefinitionListener()
         val parserFacade = ParserFacade()
-        val parseTree = parserFacade.parse(File("examples/simple.py"), funcListener)
+        val parseTree = parserFacade.parse(File(args[0]), funcListener)
         val stmts = CFGVisitor().visit(parseTree)
-        val mainCfg = CFGBuilder().makeCFG(stmts, "main")
+        val mainCfg = CFGBuilder().makeCFG(stmts, args[0].substringAfterLast('/'))
         val otherCfgs = funcListener.functions.map { CFGBuilder().makeCFG(it.body, it.definition) }
         render((otherCfgs + mainCfg).asDOT())
     }

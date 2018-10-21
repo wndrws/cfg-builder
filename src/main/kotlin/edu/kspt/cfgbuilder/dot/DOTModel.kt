@@ -35,9 +35,9 @@ fun Node.escapedText() = this.text.replace(""""""", """\"""")
 
 fun LinkTo.escapedText() = this.text.replace(""""""", """\"""")
 
-fun Iterable<ControlFlowGraph>.asDOT() =
-        this.joinToString("\n", "${GraphType.DIGRAPH.token} {\n", "\n}") {
-            it.asDOT(GraphType.SUBGRAPH)
+fun Iterable<ControlFlowGraph>.asDOT() = this.mapIndexed { index, cfg -> cfg to index }
+        .joinToString("\n", "${GraphType.DIGRAPH.token} {\n", "\n}") {
+            it.first.asDOT(GraphType.SUBGRAPH, "cluster_${it.second}")
         }
 
 fun ControlFlowGraph.asDOT(name: String) = this.asDOT(GraphType.DIGRAPH, name)
