@@ -27,7 +27,7 @@ class CFGBuilderTest {
         val pythonCode = getPythonCodeExample(name)
         val stmts = CFGVisitor().visit(ParserFacade().parse(pythonCode))
         // when
-        val cfg = CFGBuilder().makeCFG(stmts)
+        val cfg = CFGBuilder(true).makeCFG(stmts)
         // then
         cfg.prettyPrint()
         assertThat(cfg).hasSameSizeAs(expectedCfg)

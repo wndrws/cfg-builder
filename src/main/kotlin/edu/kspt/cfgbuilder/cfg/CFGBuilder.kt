@@ -4,7 +4,7 @@ import edu.kspt.cfgbuilder.ast.*
 import mu.KLogging
 import java.util.*
 
-class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
+class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
     companion object : KLogging() {
         const val PYTHON_MAIN_IF = "__name__==\"__main__\""
     }
@@ -18,8 +18,6 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
     private var depth = -1
 
     private val hangingLinksByDepth = mutableListOf<MutableList<Pair<Node, String>>>()
-
-    private val breaksByLoopsDepth = mutableListOf<MutableList<Pair<Node, String>>>()
 
     fun makeCFG(statements: Statements, funName: String = ""): ControlFlowGraph {
         cfgsInConstruction.push(cfg).also { cfg = emptyCfg() }
@@ -156,8 +154,8 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = true) {
 
     private fun removeMainIf(statements: Statements): Statements {
         val (mainIfStatement, mainIfIndex) = statements.asSequence()
-                .filter { it is IfStatement }
-                .mapIndexed { index, statement -> statement as IfStatement to index }
+                .mapIndexed { index, statement -> statement to index }
+                .mapNotNull { (it.first as? IfStatement)?.to(it.second) }
                 .find { it.first.testToBranch.containsKey(PYTHON_MAIN_IF) }
                 ?: return statements
         logger.info { "Standard main if-statement condition will not be displayed" }
