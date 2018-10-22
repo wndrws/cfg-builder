@@ -75,7 +75,8 @@ class CFGBuilderTest {
     @Suppress("unused")
     fun testMakeCFG_withForcedEnclosing() = listOf(
             "statements_with_single_exit" to `CFG with single exit on return`(),
-            "statements_with_multiple_exits" to `CFG with multiple exits on returns`()
+            "statements_with_multiple_exits" to `CFG with multiple exits on returns`(),
+            "statements_with_all_nested_exits" to `CFG with all nested exits on returns`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -580,6 +581,23 @@ class CFGBuilderTest {
                 breakNode to setOf(LinkTo(returnNode)),
                 elseNode to setOf(LinkTo(returnNode)),
                 returnNode to emptySet()
+        )
+    }
+
+    private fun `CFG with all nested exits on returns`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 5)
+        val ifCondition = Node(NodeType.CONDITION, "(timeInMicros/1000000>1)", 3)
+        val elifCondition = Node(NodeType.CONDITION, "(timeInMicros/1000>1)", 1)
+        val trueNode = Node(NodeType.END, "return \"s\"", 4)
+        val elifNode = Node(NodeType.END, "return \"ms\"",2)
+        val elseNode = Node(NodeType.END, "return \"us\"", 0)
+        return mapOf(
+                beginNode to setOf(LinkTo(ifCondition)),
+                ifCondition to setOf(LinkTo(trueNode, "yes"), LinkTo(elifCondition, "no")),
+                elifCondition to setOf(LinkTo(elifNode, "yes"), LinkTo(elseNode, "no")),
+                trueNode to emptySet(),
+                elifNode to emptySet(),
+                elseNode to emptySet()
         )
     }
 }

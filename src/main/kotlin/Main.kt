@@ -9,21 +9,23 @@ import guru.nidi.graphviz.parse.Parser
 import java.io.File
 
 object Main {
+    private lateinit var programName: String
+
     @JvmStatic
     fun main(args: Array<String>) {
+        programName = args[0].substringAfterLast('/')
         val funcListener = FunctionDefinitionListener()
         val parserFacade = ParserFacade()
         val parseTree = parserFacade.parse(File(args[0]), funcListener)
         val stmts = CFGVisitor().visit(parseTree)
-        val mainCfg = CFGBuilder().makeCFG(stmts, args[0].substringAfterLast('/'))
+        val mainCfg = CFGBuilder().makeCFG(stmts, programName)
         val otherCfgs = funcListener.functions.map { CFGBuilder().makeCFG(it.body, it.definition) }
         render((otherCfgs + mainCfg).asDOT())
     }
 
     private fun render(dot: String) {
         Graphviz.fromGraph(Parser.read(dot))
-                .height(1080)
                 .render(Format.PNG)
-                .toFile(File("examples/result.png"))
+                .toFile(File("examples/${programName}_result.png"))
     }
 }

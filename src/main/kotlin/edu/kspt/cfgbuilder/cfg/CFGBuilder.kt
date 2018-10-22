@@ -190,7 +190,11 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
         cfg.findNonBreakNonReturnEnds().forEach {
             cfg = cfg.linkNodesDirectly(it, LinkTo(lastNode))
         }
-        cfg = cfg.toMutableMap().apply { putIfAbsent(lastNode, emptySet()) }
+        cfg = cfg.toMutableMap().apply {
+            if (lastNode in values.flatMap { it }.map { it.otherNode }) {
+                putIfAbsent(lastNode, emptySet())
+            }
+        }
     }
 
 }

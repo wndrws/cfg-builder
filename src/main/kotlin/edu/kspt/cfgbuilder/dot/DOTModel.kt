@@ -31,9 +31,15 @@ fun Node.style() = "solid,filled" + when(this.type) {
     NodeType.CONTINUE -> ""
 }
 
-fun Node.escapedText() = this.text.replace(""""""", """\"""")
+fun Node.escapedText() = this.text.escape('\\','"')
 
-fun LinkTo.escapedText() = this.text.replace(""""""", """\"""")
+fun LinkTo.escapedText() = this.text.escape('\\','"')
+
+fun String.escape(vararg chars: Char): String {
+    var updatedString = this
+    chars.forEach { updatedString = updatedString.replace(it.toString(), "\\$it") }
+    return updatedString
+}
 
 fun Iterable<ControlFlowGraph>.asDOT() = this.mapIndexed { index, cfg -> cfg to index }
         .joinToString("\n", "${GraphType.DIGRAPH.token} {\n", "\n}") {
