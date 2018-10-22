@@ -64,14 +64,9 @@ dependencies {
     compile slf4j, slf4jBinding
     testCompile junit5
     testCompile "org.assertj:assertj-core:3.11.1"
-    testCompile "org.jetbrains.kotlin:kotlin-reflect:1.2.70"
 }
 
 task fatJar(type: Jar) {
-//    manifest {
-//        attributes 'Implementation-Title': 'Python-Parser',
-//                'Implementation-Version': '0.0.1'
-//    }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
