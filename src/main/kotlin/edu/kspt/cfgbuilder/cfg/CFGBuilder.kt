@@ -168,11 +168,27 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
     private fun enclose(funName: String) {
         val hangingLinks = getHangingLinksToClose()
         if (encloseOnlyIfNeeded && hangingLinks.isEmpty()) return
-        val lastNode = Node(NodeType.END, "return")
-        cfg = Node(NodeType.BEGIN, funName).connectTo(cfg)
+        closeTop(funName)
+        closeBottom(hangingLinks)
+    }
+
+    private fun closeTop(funName: String) {
+        if (cfg.findStart().type != NodeType.BEGIN) {
+            cfg = Node(NodeType.BEGIN, funName).connectTo(cfg)
+        }
+    }
+
+    private fun closeBottom(hangingLinks: List<Pair<Node, String>>) {
+        val lastNode = cfg.findAllEnds().singleOrNull()
+                ?.let { if (it.type == NodeType.END) it else null }
+                ?: Node(NodeType.END, "return")
         hangingLinks.forEach { (node, linkText) ->
             cfg = cfg.linkNodesDirectly(node, LinkTo(lastNode, linkText))
         }
-        cfg = cfg.appendNode(lastNode)
+        cfg.findAllEnds().filter { it != lastNode }.forEach {
+            cfg = cfg.linkNodesDirectly(it, LinkTo(lastNode))
+        }
+        cfg = cfg.toMutableMap().apply { putIfAbsent(lastNode, emptySet()) }
     }
+
 }
