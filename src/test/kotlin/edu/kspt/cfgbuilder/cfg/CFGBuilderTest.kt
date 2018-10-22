@@ -74,7 +74,8 @@ class CFGBuilderTest {
 
     @Suppress("unused")
     fun testMakeCFG_withForcedEnclosing() = listOf(
-            "statements_with_single_exit" to `CFG with single exit on return`()
+            "statements_with_single_exit" to `CFG with single exit on return`(),
+            "statements_with_multiple_exits" to `CFG with multiple exits on returns`()
     ).map { Arguments.of(it.first, it.second) }
 
     @Test
@@ -545,6 +546,35 @@ class CFGBuilderTest {
                 forNode to setOf(LinkTo(innerIf1, "yes"), LinkTo(returnNode, "no")),
                 innerIf1 to setOf(LinkTo(continueNode, "yes"), LinkTo(node3, "no")),
                 continueNode to setOf(LinkTo(forNode, phantom = true)),
+                node3 to setOf(LinkTo(innerIf2)),
+                innerIf2 to setOf(LinkTo(breakNode, "yes"), LinkTo(forNode, "no", phantom = true)),
+                breakNode to setOf(LinkTo(returnNode)),
+                elseNode to setOf(LinkTo(returnNode)),
+                returnNode to emptySet()
+        )
+    }
+
+    private fun `CFG with multiple exits on returns`(): ControlFlowGraph {
+        val beginNode = Node(NodeType.BEGIN, "", 11)
+        val node1 = Node(NodeType.FLOW, "import numpy", 10)
+        val outerIf = Node(NodeType.CONDITION, "a>b", 2)
+        val node2 = Node(NodeType.FLOW, "print(1)", 9)
+        val forNode = Node(NodeType.LOOP_BEGIN, "i in range(1,20)", 3)
+        val innerIf1 = Node(NodeType.CONDITION, "i==10", 7)
+        val innerReturn = Node(NodeType.END, "return 123", 8)
+        val node3 = Node(NodeType.FLOW, "print(i)", 6)
+        val innerIf2 = Node(NodeType.CONDITION, "i==11", 4)
+        val breakNode = Node(NodeType.BREAK, "break", 5)
+        val elseNode = Node(NodeType.FLOW, "print(2)", 1)
+        val returnNode = Node(NodeType.END, "return a+b", 0)
+        return mapOf(
+                beginNode to setOf(LinkTo(node1)),
+                node1 to setOf(LinkTo(outerIf)),
+                outerIf to setOf(LinkTo(node2, "yes"), LinkTo(elseNode, "no")),
+                node2 to setOf(LinkTo(forNode)),
+                forNode to setOf(LinkTo(innerIf1, "yes"), LinkTo(returnNode, "no")),
+                innerIf1 to setOf(LinkTo(innerReturn, "yes"), LinkTo(node3, "no")),
+                innerReturn to emptySet(),
                 node3 to setOf(LinkTo(innerIf2)),
                 innerIf2 to setOf(LinkTo(breakNode, "yes"), LinkTo(forNode, "no", phantom = true)),
                 breakNode to setOf(LinkTo(returnNode)),

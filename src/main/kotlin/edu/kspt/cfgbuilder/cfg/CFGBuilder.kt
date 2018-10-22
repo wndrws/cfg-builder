@@ -19,6 +19,8 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
 
     private val hangingLinksByDepth = mutableListOf<MutableList<Pair<Node, String>>>()
 
+    private val returnsToTheirDepth = mutableMapOf<Node, Int>()
+
     fun makeCFG(statements: Statements, funName: String = ""): ControlFlowGraph {
         cfgsInConstruction.push(cfg).also { cfg = emptyCfg() }
         depth++
@@ -40,7 +42,8 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
     }
 
     private fun handleReturnStatement(statement: ReturnStatement) = startCfgBuilding(
-            Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}"), statement)
+            Node(NodeType.END, "${statement.returnVariation} ${statement.returnValue}")
+                    .also { returnsToTheirDepth[it] = depth }, statement)
 
     private fun handleBreakStatement(statement: BreakStatement) =
             if (loopsDepth > 0) {
@@ -129,7 +132,7 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
 
     private fun closeLoop(loopBody: ControlFlowGraph, loopCfg: ControlFlowGraph): ControlFlowGraph {
         var updatedLoopCfg = loopCfg
-        loopBody.findNonBreakEnds().forEach {
+        loopBody.findNonBreakNonReturnEnds().forEach {
             updatedLoopCfg = it.connectTo(updatedLoopCfg, phantom = true)
         }
         return updatedLoopCfg
@@ -179,13 +182,12 @@ class CFGBuilder(private val encloseOnlyIfNeeded: Boolean = false) {
     }
 
     private fun closeBottom(hangingLinks: List<Pair<Node, String>>) {
-        val lastNode = cfg.findAllEnds().singleOrNull()
-                ?.let { if (it.type == NodeType.END) it else null }
+        val lastNode = cfg.findReturnEnds().singleOrNull { returnsToTheirDepth[it] == 0 }
                 ?: Node(NodeType.END, "return")
         hangingLinks.forEach { (node, linkText) ->
             cfg = cfg.linkNodesDirectly(node, LinkTo(lastNode, linkText))
         }
-        cfg.findAllEnds().filter { it != lastNode }.forEach {
+        cfg.findNonBreakNonReturnEnds().forEach {
             cfg = cfg.linkNodesDirectly(it, LinkTo(lastNode))
         }
         cfg = cfg.toMutableMap().apply { putIfAbsent(lastNode, emptySet()) }

@@ -98,9 +98,12 @@ fun ControlFlowGraph.findEnds(predicate: (Node) -> Boolean) = this.filter { (k, 
 
 fun ControlFlowGraph.findAllEnds() = this.findEnds { true }
 
-fun ControlFlowGraph.findNonBreakEnds() = this.findEnds { it.type != NodeType.BREAK }
+fun ControlFlowGraph.findNonBreakNonReturnEnds() = this
+        .findEnds { it.type != NodeType.BREAK && it.type != NodeType.END}
 
 fun ControlFlowGraph.findBreakEnds() = this.findEnds { it.type == NodeType.BREAK }
+
+fun ControlFlowGraph.findReturnEnds() = this.findEnds { it.type == NodeType.END }
 
 fun ControlFlowGraph.appendNode(node: Node, linkText: String = ""): ControlFlowGraph {
     val newGraphEntries = this.findAllEnds().map { it to setOf(LinkTo(node, linkText)) }.toMap()
@@ -109,7 +112,8 @@ fun ControlFlowGraph.appendNode(node: Node, linkText: String = ""): ControlFlowG
 }
 
 fun ControlFlowGraph.concat(other: ControlFlowGraph): ControlFlowGraph {
-    val newGraphEntries = this.findAllEnds().filter { it.type != NodeType.CONTINUE }
+    val newGraphEntries = this.findAllEnds()
+            .filter { it.type != NodeType.CONTINUE && it.type != NodeType.END }
             .map { it to setOf(LinkTo(other.findStart())) }.toMap()
     return this + newGraphEntries + other
 }

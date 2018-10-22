@@ -76,7 +76,7 @@ class CFGModelTest {
         val jointCfg = Node(NodeType.BEGIN, "newBegin").join(cfgWithBreak, cfgWithoutBreak)
         // when
         val breakEnds = jointCfg.findBreakEnds()
-        val nonBreakEnds = jointCfg.findNonBreakEnds()
+        val nonBreakEnds = jointCfg.findNonBreakNonReturnEnds()
         // then
         assertThat(breakEnds).containsExactly(breakEnd)
         assertThat(nonBreakEnds).containsExactly(nonBreakEnd)
