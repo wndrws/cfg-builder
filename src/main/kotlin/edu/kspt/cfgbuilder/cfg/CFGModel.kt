@@ -32,16 +32,6 @@ data class Node(val type: NodeType, val text: String, val id: Int = CURRENT_MAX_
         return jointCfg
     }
 
-    fun join(cfg: ControlFlowGraph, node: Node,
-             firstLinkText: String = "", secondLinkText: String = ""): ControlFlowGraph {
-        val startOfFirstCfg = cfg.findStart()
-        val jointCfg = (cfg + (node to emptySet())).toMutableMap()
-        jointCfg[this] = setOf(
-                LinkTo(startOfFirstCfg, firstLinkText),
-                LinkTo(node, secondLinkText))
-        return jointCfg
-    }
-
     fun prettyStr(padding: Int) =
             beginStr() + "${text.padEnd(padding).let {
                 if (it.length > padding) it.take(padding - 3) + "..." else it }
