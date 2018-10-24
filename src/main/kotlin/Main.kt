@@ -13,6 +13,7 @@ object Main {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        if (args.size != 1) throw IllegalArgumentException("Please provide path to the python program as only argument")
         programName = args[0].substringAfterLast('/')
         val funcListener = FunctionDefinitionListener()
         val parserFacade = ParserFacade()
