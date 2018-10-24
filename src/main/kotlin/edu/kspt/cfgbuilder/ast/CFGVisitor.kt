@@ -44,12 +44,24 @@ class CFGVisitor : Python3BaseVisitor<Statements>() {
     override fun visitIf_stmt(ifStatement: Python3Parser.If_stmtContext): Statements {
         val conditionToBranch = LinkedHashMap<String, Statements>()
         (0 until ifStatement.test().size).associateTo(conditionToBranch) { i ->
-            ifStatement.test(i).text to visitChildren(ifStatement.suite(i))
+            formatTest(ifStatement.test(i)) to visitChildren(ifStatement.suite(i))
         }
         val elseBranch = if (ifStatement.test().size != ifStatement.suite().size) {
             visitChildren(ifStatement.suite().last())
         } else emptyList()
         return listOf(IfStatement(conditionToBranch, elseBranch))
+    }
+
+    private fun formatTest(test:  Python3Parser.TestContext) = if (test.or_test().isEmpty()) {
+        test.text
+    } else {
+        test.or_test().joinToString(" or ", transform = { orTest ->
+            if (orTest.and_test().isEmpty()) {
+                orTest.text
+            } else {
+                orTest.and_test().joinToString(" and ", transform = { it.text })
+            }
+        })
     }
 
     override fun visitFor_stmt(forStatement: Python3Parser.For_stmtContext): Statements {
