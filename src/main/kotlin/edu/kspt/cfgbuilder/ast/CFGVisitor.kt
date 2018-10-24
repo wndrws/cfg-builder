@@ -2,9 +2,10 @@ package edu.kspt.cfgbuilder.ast
 
 import edu.kspt.cfgbuilder.Python3BaseVisitor
 import edu.kspt.cfgbuilder.Python3Parser
+import mu.KLogging
 
 class CFGVisitor : Python3BaseVisitor<Statements>() {
-    companion object {
+    companion object : KLogging() {
         private const val IN = "in"
 
         private val RETURNISH_TOKENS = sequenceOf("return", "yield")
@@ -69,4 +70,16 @@ class CFGVisitor : Python3BaseVisitor<Statements>() {
             }
 
     override fun visitFuncdef(ctx: Python3Parser.FuncdefContext) = emptyList<Statement>()
+
+    override fun visitWith_stmt(withStatement: Python3Parser.With_stmtContext): Statements {
+        logger.warn { "'with'-statements are not supported and will be flattened!" }
+        return listOf(SimpleStatement(withStatement.with_item()
+                .joinToString(", ", "with ", transform = { ctx -> ctx.text}))) +
+                visitChildren(withStatement.suite())
+    }
+
+    override fun visitTry_stmt(tryStatement: Python3Parser.Try_stmtContext): Statements {
+        logger.warn { "'try'-statements are not supported: only body of 'try' will be displayed!'" }
+        return visitChildren(tryStatement.suite(0))
+    }
 }
