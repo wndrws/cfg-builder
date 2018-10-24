@@ -75,6 +75,8 @@ private fun StringBuilder.declareNodes(nodes: Set<Node>): StringBuilder {
         append("${it.nodeId()} [")
         append("label=\"${it.escapedText()}\", ")
         append("shape=\"${it.shape()}\", ")
+        if (it.type == NodeType.BEGIN) append("fillcolor=\"#ddddff\", ")
+        if (it.type == NodeType.END) append("fillcolor=\"#eedddd\", ")
         append("style=\"${it.style()}\"")
         appendln("];")
     }
