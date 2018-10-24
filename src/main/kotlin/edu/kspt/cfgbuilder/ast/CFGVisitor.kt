@@ -70,7 +70,7 @@ class CFGVisitor : Python3BaseVisitor<Statements>() {
     }
 
     override fun visitWhile_stmt(whileStatement: Python3Parser.While_stmtContext): Statements {
-        val condition = whileStatement.test().text
+        val condition = formatTest(whileStatement.test())
         return listOf(createLoopStatement(condition, whileStatement.suite()))
     }
 
